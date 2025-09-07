@@ -29,10 +29,10 @@ function TagFilter(): JSX.Element {
 	const [open, setOpen] = useState(true)
 	const tags = computeAvailableTags()
 	const activeChips: { group: 'subject'|'topic'|'concept'|'ai_keywords'; value: string }[] = []
-	for (const v of Array.from(filters.subject)) activeChips.push({ group: 'subject', value: v })
-	for (const v of Array.from(filters.topic)) activeChips.push({ group: 'topic', value: v })
-	for (const v of Array.from(filters.concept)) activeChips.push({ group: 'concept', value: v })
-	for (const v of Array.from(filters.ai_keywords)) activeChips.push({ group: 'ai_keywords', value: v })
+	for (const v of Array.from(filters.subject) as string[]) activeChips.push({ group: 'subject', value: v })
+	for (const v of Array.from(filters.topic) as string[]) activeChips.push({ group: 'topic', value: v })
+	for (const v of Array.from(filters.concept) as string[]) activeChips.push({ group: 'concept', value: v })
+	for (const v of Array.from(filters.ai_keywords) as string[]) activeChips.push({ group: 'ai_keywords', value: v })
 	const totalTags = tags.subject.length + tags.topic.length + tags.concept.length + tags.ai_keywords.length
 	return (
 		<div className="bg-white border rounded mb-3">
@@ -57,41 +57,41 @@ function TagFilter(): JSX.Element {
 						<div>
 							<div className="font-semibold mb-1">Subject</div>
 							<div className="flex flex-wrap gap-2 max-h-28 overflow-auto">
-								{tags.subject.map((t) => (
-									<label key={`sub-${t}`} className="inline-flex items-center gap-1">
-										<input type="checkbox" checked={filters.subject.has(t)} onChange={(e) => setTagFilter('subject', t, e.target.checked)} /> <span className="truncate max-w-[9rem]">{t}</span>
-									</label>
-								))}
+												{tags.subject.map((t: string) => (
+													<label key={`sub-${t}`} className="inline-flex items-center gap-1">
+														<input type="checkbox" checked={filters.subject.has(t)} onChange={(e) => setTagFilter('subject', t, e.target.checked)} aria-label={`Filter by subject ${t}`} /> <span className="truncate max-w-[9rem]">{t}</span>
+													</label>
+												))}
 							</div>
 						</div>
 						<div>
 							<div className="font-semibold mb-1">Topic</div>
 							<div className="flex flex-wrap gap-2 max-h-28 overflow-auto">
-								{tags.topic.map((t) => (
-									<label key={`top-${t}`} className="inline-flex items-center gap-1">
-										<input type="checkbox" checked={filters.topic.has(t)} onChange={(e) => setTagFilter('topic', t, e.target.checked)} /> <span className="truncate max-w-[9rem]">{t}</span>
-									</label>
-								))}
+												{tags.topic.map((t: string) => (
+													<label key={`top-${t}`} className="inline-flex items-center gap-1">
+														<input type="checkbox" checked={filters.topic.has(t)} onChange={(e) => setTagFilter('topic', t, e.target.checked)} aria-label={`Filter by topic ${t}`} /> <span className="truncate max-w-[9rem]">{t}</span>
+													<span className="sr-only">Filter by topic {t}</span></label>
+												))}
 							</div>
 						</div>
 						<div>
 							<div className="font-semibold mb-1">Concept</div>
 							<div className="flex flex-wrap gap-2 max-h-28 overflow-auto">
-								{tags.concept.map((t) => (
-									<label key={`con-${t}`} className="inline-flex items-center gap-1">
-										<input type="checkbox" checked={filters.concept.has(t)} onChange={(e) => setTagFilter('concept', t, e.target.checked)} /> <span className="truncate max-w-[9rem]">{t}</span>
-									</label>
-								))}
+												{tags.concept.map((t: string) => (
+													<label key={`con-${t}`} className="inline-flex items-center gap-1">
+														<input type="checkbox" checked={filters.concept.has(t)} onChange={(e) => setTagFilter('concept', t, e.target.checked)} aria-label={`Filter by concept ${t}`} /> <span className="truncate max-w-[9rem]">{t}</span>
+													<span className="sr-only">Filter by concept {t}</span></label>
+												))}
 							</div>
 						</div>
 						<div>
 							<div className="font-semibold mb-1">Keywords</div>
 							<div className="flex flex-wrap gap-2 max-h-28 overflow-auto">
-								{tags.ai_keywords.map((t) => (
-									<label key={`kw-${t}`} className="inline-flex items-center gap-1">
-										<input type="checkbox" checked={filters.ai_keywords.has(t)} onChange={(e) => setTagFilter('ai_keywords', t, e.target.checked)} /> <span className="truncate max-w-[9rem]">{t}</span>
-									</label>
-								))}
+												{tags.ai_keywords.map((t: string) => (
+													<label key={`kw-${t}`} className="inline-flex items-center gap-1">
+														<input type="checkbox" checked={filters.ai_keywords.has(t)} onChange={(e) => setTagFilter('ai_keywords', t, e.target.checked)} aria-label={`Filter by keyword ${t}`} /> <span className="truncate max-w-[9rem]">{t}</span>
+													<span className="sr-only">Filter by keyword {t}</span></label>
+												))}
 							</div>
 						</div>
 					</div>
@@ -307,20 +307,20 @@ export default function App(): JSX.Element {
 						<button onClick={clearSelection} className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200">Clear</button>
 					</div>
 					<div className="space-y-2">
-						{filteredItems.map((q: QAItem) => (
-							<div key={q.id} className={`w-full p-2 rounded border ${currentId === q.id ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-								<div className="flex items-start gap-2">
-									<input type="checkbox" checked={selectedIds.has(q.id)} onChange={() => toggleSelect(q.id)} className="mt-1" />
-									<button onClick={() => select(q.id)} className="text-left flex-1">
-										<div className="text-sm font-medium text-gray-900 truncate">{q.topicTitle || 'Untitled'}</div>
-										<div className="text-xs text-gray-500 max-h-10 overflow-hidden break-words">{q.questionText}</div>
-										{q.tags && (
-											<div className="text-[10px] text-gray-500 mt-1 truncate">{[...(q.tags.subject||[]), ...(q.tags.topic||[]), ...(q.tags.concept||[])].slice(0,3).join(' • ')}</div>
-										)}
-									</button>
-								</div>
-							</div>
-						))}
+										{filteredItems.map((q: QAItem) => (
+											<div key={q.id} className={`w-full p-2 rounded border ${currentId === q.id ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+												<div className="flex items-start gap-2">
+													<input type="checkbox" checked={selectedIds.has(q.id)} onChange={() => toggleSelect(q.id)} className="mt-1" aria-label={`Select question ${q.topicTitle || 'Untitled'}`} />
+													<button onClick={() => select(q.id)} className="text-left flex-1">
+														<div className="text-sm font-medium text-gray-900 truncate overflow-hidden whitespace-nowrap max-w-[180px]">{q.topicTitle || 'Untitled'}</div>
+														<div className="text-xs text-gray-500 max-h-10 overflow-hidden line-clamp-2">{q.questionText}</div>
+														{q.tags && (
+															<div className="text-[10px] text-gray-500 mt-1 truncate overflow-hidden whitespace-nowrap max-w-[180px]">{[...(q.tags.subject||[]), ...(q.tags.topic||[]), ...(q.tags.concept||[])].slice(0,3).join(' • ')}</div>
+														)}
+													</button>
+												</div>
+											</div>
+										))}
 						{filteredItems.length === 0 && <div className="text-xs text-gray-500">No questions match filters</div>}
 					</div>
 				</aside>
@@ -330,7 +330,7 @@ export default function App(): JSX.Element {
 						{showUploader && (
 							<div className="bg-white rounded-xl border p-4 shadow-sm mb-4">
 								<div ref={dropRef} className="border-2 border-dashed rounded-lg p-4 text-center">
-									<input type="file" accept="image/png, image/jpeg" onChange={onFileChange} className="block w-full text-sm text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+									<input type="file" accept="image/png, image/jpeg" onChange={onFileChange} className="block w-full text-sm text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" aria-label="Upload image file" />
 									<div className="text-xs text-gray-500 mt-2">Paste an image (Cmd/Ctrl+V) or choose a file</div>
 								</div>
 								{imagePreview && <img src={imagePreview} alt="preview" className="mt-3 max-h-48 rounded border" />}

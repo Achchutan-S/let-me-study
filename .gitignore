@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+ENV/
+Pipfile.lock
+
+# FastAPI / logs
+*.log
+*.sqlite3
+
+# Node / React
+node_modules/
+dist/
+build/
+.next/
+.parcel-cache/
+.vite/
+*.map
+
+# Environment
+.env
+.env.local
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug artifacts
+debug/
+temp/
+*.tmp
+backend/input.png
+backend/red_regions.png
+backend/main_region.png
+/tmp/

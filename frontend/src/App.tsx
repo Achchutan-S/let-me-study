@@ -143,6 +143,52 @@ export default function App(): JSX.Element {
 	const [showUploader, setShowUploader] = useState(false)
 	const dropRef = useRef(null as HTMLDivElement | null)
 
+	// Semantic search state
+	const [semanticQuery, setSemanticQuery] = useState('')
+	const [isSearching, setIsSearching] = useState(false)
+	const [semanticResults, setSemanticResults] = useState<Array<{
+		question_number?: number;
+		topicTitle?: string;
+		tags?: { [key: string]: string[] };
+		cleaned_question_text: string;
+		gemini_markdown?: string;
+		similarity_score: number;
+	}>>([])
+
+	const handleSemanticSearch = async () => {
+		if (!semanticQuery.trim() || !currentPaperId) return
+		setIsSearching(true)
+		try {
+			const results = await api.semanticSearch(semanticQuery.trim(), currentPaperId)
+			setSemanticResults(results)
+			// Update the filtered items to show search results
+			if (results.length > 0) {
+				const questionNumbers = results.map(r => r.question_number).filter(n => n !== undefined) as number[]
+				// Create a mapping of question numbers to similarity scores
+				const scoreMap = new Map(results.map(r => [r.question_number, r.similarity_score]))
+				
+				// Sort items based on semantic search results
+				const currentItems = getFilteredItems()
+				currentItems.sort((a: QAItem, b: QAItem) => {
+					const aNumber = parseInt(a.id.split('-')[1])
+					const bNumber = parseInt(b.id.split('-')[1])
+					const aScore = scoreMap.get(aNumber) || -1
+					const bScore = scoreMap.get(bNumber) || -1
+					return bScore - aScore // Higher scores first
+				})
+			}
+		} catch (err: any) {
+			setError(err?.message || 'Search failed')
+		} finally {
+			setIsSearching(false)
+		}
+	}
+
+	const clearSemanticSearch = () => {
+		setSemanticQuery('')
+		setSemanticResults([])
+	}
+
 	const {
 		papers, currentPaperId, loading, saveMessage,
 		items, currentId, selectedIds,
@@ -294,6 +340,30 @@ export default function App(): JSX.Element {
 
 			<div className="grid grid-cols-1 md:grid-cols-[280px,1fr]">
 				<aside className="border-r bg-white p-4 hidden md:block overflow-y-auto">
+					<div className="mb-4">
+						<div className="flex items-center gap-2 mb-2">
+							<input 
+								type="text" 
+								placeholder="Semantic search..." 
+								value={semanticQuery}
+								onChange={(e) => setSemanticQuery(e.target.value)}
+								className="flex-1 text-sm border rounded px-3 py-1.5"
+								onKeyDown={(e) => e.key === 'Enter' && handleSemanticSearch()}
+							/>
+							<button 
+								onClick={handleSemanticSearch} 
+								disabled={!semanticQuery.trim() || isSearching}
+								className="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white disabled:opacity-50">
+								{isSearching ? 'Searching...' : 'Search'}
+							</button>
+						</div>
+						{semanticResults.length > 0 && (
+							<div className="text-xs text-gray-500 mb-2">
+								Found {semanticResults.length} results. Showing questions ordered by relevance.
+								<button onClick={clearSemanticSearch} className="ml-2 text-indigo-600 hover:underline">Clear results</button>
+							</div>
+						)}
+					</div>
 					<TagFilter />
 					<div className="flex items-center justify-between mb-3">
 						<h2 className="font-semibold text-gray-900">Questions</h2>

@@ -17,8 +17,10 @@ from dotenv import load_dotenv
 # Support running as package or as a script
 try:
     from .db import get_database  # type: ignore
-except Exception:
+    from .embeddings import get_embedding, compute_cosine_similarities, get_top_k_indices  # type: ignore
+except ImportError:
     from db import get_database  # type: ignore
+    from embeddings import get_embedding, compute_cosine_similarities, get_top_k_indices  # type: ignore
 
 # Load environment variables from a local .env if present
 load_dotenv()
@@ -43,6 +45,22 @@ class QuestionCreate(BaseModel):
     gemini_markdown: Optional[str] = None
     topicTitle: Optional[str] = None
     tags: Optional[Dict[str, List[str]]] = None
+    vector_question: Optional[List[float]] = None
+    vector_explanation: Optional[List[float]] = None
+
+
+class SemanticSearchRequest(BaseModel):
+    query: str
+    paperId: Optional[str] = None
+
+
+class SemanticSearchResult(BaseModel):
+    question_number: Optional[int]
+    topicTitle: Optional[str]
+    tags: Optional[Dict[str, List[str]]]
+    cleaned_question_text: str
+    gemini_markdown: Optional[str]
+    similarity_score: float
 
 
 class QuestionDelete(BaseModel):
@@ -251,6 +269,15 @@ async def upsert_question(payload: QuestionCreate, db=Depends(get_database)) -> 
     from datetime import datetime
     qnum = payload.question_number or 0
     qkey = {'paperId': payload.paperId, 'question_number': qnum}
+
+    # Generate embeddings for semantic search if not provided
+    if not payload.vector_question:
+        payload.vector_question = get_embedding(
+            payload.cleaned_question_text, task_type="retrieval_document")
+    if not payload.vector_explanation and payload.gemini_markdown:
+        payload.vector_explanation = get_embedding(
+            payload.gemini_markdown, task_type="retrieval_document")
+
     update = {
         '$set': {
             'paperId': payload.paperId,
@@ -261,6 +288,8 @@ async def upsert_question(payload: QuestionCreate, db=Depends(get_database)) -> 
             'gemini_markdown': payload.gemini_markdown or '',
             'topicTitle': payload.topicTitle or '',
             'tags': payload.tags or {},
+            'vector_question': payload.vector_question,
+            'vector_explanation': payload.vector_explanation,
             'updatedAt': datetime.utcnow(),
         },
         '$setOnInsert': {'createdAt': datetime.utcnow()},
@@ -456,6 +485,72 @@ async def search_questions(payload: SearchRequest, db=Depends(get_database)) -> 
     data = [doc async for doc in cursor]
     return {'questions': data}
 
+
+@app.post('/questions/semantic-search')
+async def semantic_search(payload: SemanticSearchRequest, db=Depends(get_database)) -> List[SemanticSearchResult]:
+    # Get the query embedding with the correct task type
+    query_embedding = get_embedding(payload.query, task_type="retrieval_query")
+
+    # Build the filter for MongoDB query
+    filt: Dict[str, Any] = {}
+    if payload.paperId:
+        filt['paperId'] = payload.paperId
+
+    # Get all questions with vector embeddings
+    projection = {
+        '_id': 0,
+        'question_number': 1,
+        'topicTitle': 1,
+        'tags': 1,
+        'cleaned_question_text': 1,
+        'gemini_markdown': 1,
+        'vector_question': 1,
+        'vector_explanation': 1
+    }
+    cursor = db.questions.find(filt, projection).sort(
+        [('updatedAt', -1), ('question_number', 1)])
+    questions = await cursor.to_list(length=None)
+
+    # Filter out questions without embeddings and prepare data for similarity computation
+    valid_questions = []
+    question_embeddings = []
+    explanation_embeddings = []
+
+    for q in questions:
+        if q.get('vector_question') and q.get('vector_explanation'):
+            valid_questions.append(q)
+            question_embeddings.append(q['vector_question'])
+            explanation_embeddings.append(q['vector_explanation'])
+
+    if not valid_questions:
+        return []
+
+    # Calculate similarities
+    question_similarities = compute_cosine_similarities(
+        query_embedding, question_embeddings)
+    explanation_similarities = compute_cosine_similarities(
+        query_embedding, explanation_embeddings)
+
+    # Combine similarities (weighted average)
+    combined_similarities = 0.7 * question_similarities + 0.3 * explanation_similarities
+
+    # Get indices of top results (k=10)
+    top_k_indices = get_top_k_indices(combined_similarities, k=10)
+
+    # Build results
+    results = []
+    for idx in top_k_indices:
+        q = valid_questions[idx]
+        results.append(SemanticSearchResult(
+            question_number=q.get('question_number'),
+            topicTitle=q.get('topicTitle'),
+            tags=q.get('tags'),
+            cleaned_question_text=q['cleaned_question_text'],
+            gemini_markdown=q.get('gemini_markdown'),
+            similarity_score=float(combined_similarities[idx])
+        ))
+
+    return results
 
 if __name__ == "__main__":
     import uvicorn

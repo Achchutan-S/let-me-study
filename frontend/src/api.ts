@@ -34,4 +34,16 @@ export const api = {
 	searchQuestions: (payload: any) => http<{ questions: Question[] }>(`/questions/search`, {
 		method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
 	}),
+	semanticSearch: (query: string, paperId?: string) => http<Array<{
+		question_number?: number;
+		topicTitle?: string;
+		tags?: { [key: string]: string[] };
+		cleaned_question_text: string;
+		gemini_markdown?: string;
+		similarity_score: number;
+	}>>(`/questions/semantic-search`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ query, paperId })
+	}),
 }
